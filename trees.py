@@ -8,7 +8,7 @@ from IPython.core.display import Image as ImageDisplay
 import random
 from PyQt4.QtGui import QImage, QPainter, QColor, QPolygon
 from PyQt4 import Qt
-from PyQt4.QtCore import QPoint, QObject, QPointF, QLineF
+from PyQt4.QtCore import QPoint, QObject, QPointF, QLineF, QEventLoop
 
 from PyQt4.QtGui import QLabel, QApplication, QPixmap, QMainWindow, QPushButton, QVBoxLayout, QWidget, QDialog
 from PyQt4.QtGui import QPen, QGraphicsScene, QPolygonF
@@ -149,19 +149,37 @@ class Branch:
             own_bounds.grow_to(box)
         return own_bounds
 
+class GrassDrawer:
+    def __init__(self, view):
+        self.view = view
+        self.bounds = self.view.sceneRect()
 
-class Coordinates:
-    def __init__(self, bounding_box, resolution):
-        self.bounding_box = bounding_box
-        self.resolution = resolution
+    def draw_some_grass(self, bundles=100):
+        for i in range(bundles):
+            width = self.bounds.bottomLeft().x() - self.bounds.bottomRight().x()
+            x = random.gauss((self.bounds.bottomLeft().x() + self.bounds.bottomRight().x()) / 2.0, width / 5.0)
+            max_z = 0.15 * (self.bounds.topLeft().y() - self.bounds.bottomLeft().y())
+            z = random.uniform(-max_z, max_z)
+            size = 0.15 + ((max_z - z) / max_z) ** 1.5
+            y = z * random.uniform(0, 1)
+            self.draw_grass_bundle(location=(x, y), size=size, items=random.randint(6, 14))
 
-    def __call__(self, *args, **kwargs):
-        source_coords = args[0]
-        res = (
-                (np.real(source_coords) - self.bounding_box.xmin) / self.bounding_box.size()[0] * self.resolution[0],
-                self.resolution[1] - (np.imag(source_coords) - self.bounding_box.ymin) / self.bounding_box.size()[1] * self.resolution[1]
-              )
-        return res
+    def draw_grass_bundle(self, location, size, items):
+        baseSize = 8
+        size = size * baseSize
+        baseHeight = 0.4
+        pen = QPen(QColor(127, 127, 127, 60))
+        for i in range(items):
+            segments = 5
+            base = QPoint(*location)
+            x_diff = size * baseSize * random.uniform(-0.2, 0.2)
+            y_diff = size * baseSize * random.uniform(0.8, 1.2) * baseHeight
+            current_location = base
+            for segment_index in range(segments):
+                segment_tip = QPoint(location[0] + x_diff / segments ** 2 * (segment_index + 1) ** 2,
+                                     location[1] - y_diff / segments * segment_index)
+                self.view.scene().addLine(QLineF(current_location, segment_tip), pen)
+                current_location = segment_tip
 
 class Tree:
     def __init__(self, params):
@@ -232,16 +250,23 @@ class TreeDialog(QDialog):
             index += every
             if self.active_painer != painter_id:
                 return
+
+        d = GrassDrawer(self.ui.image)
+        d.draw_some_grass()
         self.ui.progress.setText("Done. Displayed frame: {0}".format(index))
+
+def aboutToQuit():
+    # Prevents a crash, probably a bug in pyqt
+    window.ui.image.deleteLater()
+    window.close()
 
 if __name__ == '__main__':
     import sys
     app = QApplication(sys.argv)
     window = TreeDialog()
-    widget = QLabel()
     window.show()
     window.new_anim()
-    app.exec_()
-
-
+    app.setActiveWindow(window)
+    app.aboutToQuit.connect(aboutToQuit)
+    exit(app.exec_())
 
