@@ -34,7 +34,7 @@
           <double>0.050000000000000</double>
          </property>
          <property name="value">
-          <double>0.300000000000000</double>
+          <double>0.350000000000000</double>
          </property>
         </widget>
        </item>
@@ -53,7 +53,7 @@
             <number>4</number>
            </property>
            <property name="value">
-            <number>24</number>
+            <number>12</number>
            </property>
           </widget>
          </item>
@@ -66,7 +66,7 @@
             <number>4</number>
            </property>
            <property name="value">
-            <number>44</number>
+            <number>28</number>
            </property>
           </widget>
          </item>
@@ -85,7 +85,7 @@
           <double>0.100000000000000</double>
          </property>
          <property name="value">
-          <double>2.400000000000000</double>
+          <double>2.700000000000000</double>
          </property>
         </widget>
        </item>
@@ -111,7 +111,7 @@
           <double>0.002500000000000</double>
          </property>
          <property name="value">
-          <double>0.025000000000000</double>
+          <double>0.037500000000000</double>
          </property>
         </widget>
        </item>
@@ -131,7 +131,7 @@
           <number>10</number>
          </property>
          <property name="value">
-          <number>330</number>
+          <number>150</number>
          </property>
         </widget>
        </item>
@@ -151,7 +151,7 @@
           <number>250</number>
          </property>
          <property name="value">
-          <number>5</number>
+          <number>14</number>
          </property>
         </widget>
        </item>
@@ -321,7 +321,7 @@
             <double>0.100000000000000</double>
            </property>
            <property name="value">
-            <double>2.000000000000000</double>
+            <double>1.600000000000000</double>
            </property>
           </widget>
          </item>
@@ -421,6 +421,9 @@
          <property name="singleStep">
           <double>0.050000000000000</double>
          </property>
+         <property name="value">
+          <double>0.050000000000000</double>
+         </property>
         </widget>
        </item>
        <item row="8" column="0">
@@ -447,7 +450,7 @@
             <double>0.500000000000000</double>
            </property>
            <property name="value">
-            <double>5.000000000000000</double>
+            <double>2.500000000000000</double>
            </property>
           </widget>
          </item>
@@ -460,7 +463,7 @@
             <number>1000</number>
            </property>
            <property name="value">
-            <number>8</number>
+            <number>7</number>
            </property>
           </widget>
          </item>
@@ -473,7 +476,48 @@
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_7">
      <item>
+      <widget class="QLabel" name="label_21">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>Trees:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QSpinBox" name="tree_count">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimum">
+        <number>1</number>
+       </property>
+       <property name="maximum">
+        <number>20</number>
+       </property>
+       <property name="singleStep">
+        <number>1</number>
+       </property>
+       <property name="value">
+        <number>4</number>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QPushButton" name="draw_buton">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="text">
         <string>Redraw</string>
        </property>

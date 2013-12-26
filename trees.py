@@ -1,17 +1,15 @@
 # -*- coding: utf-8 -*-
-# <nbformat>3.0</nbformat>
 
-import numpy as np
-from matplotlib import pyplot as plt
-import ImageDraw, Image
-from IPython.core.display import Image as ImageDisplay
 import random
-from PyQt4.QtGui import QImage, QPainter, QColor, QPolygon
+
 from PyQt4 import Qt
 from PyQt4.QtCore import QPoint, QObject, QPointF, QLineF, QEventLoop
 
+from PyQt4.QtGui import QImage, QPainter, QColor, QPolygon
 from PyQt4.QtGui import QLabel, QApplication, QPixmap, QMainWindow, QPushButton, QVBoxLayout, QWidget, QDialog
-from PyQt4.QtGui import QPen, QGraphicsScene, QPolygonF
+from PyQt4.QtGui import QPen, QGraphicsScene, QPolygonF, QLinearGradient, QBrush
+
+import numpy as np
 
 image_shape = (1200, 800)
 
@@ -122,14 +120,23 @@ class Branch:
         points = [QPointF(np.real(x), -np.imag(x)) for x in self.history[start:]]
 
         gens = float(self.params["painter_generations"])
-        pen_width = max(0, gens-self.generation) / gens * self.params["painter_thickness"]
-        color = self.params["color"]
-        assert isinstance(color, QColor)
-        color.setAlpha(17 + 99 * max(0, gens-self.generation) / gens)
+        scale_factor = (self.params["scale"] - 1) * 3 + 1
+        pen_width = max(0, gens-self.generation) / gens * self.params["painter_thickness"] * scale_factor
+        if self.generation == 0 and len(self.history) < 30:
+            intensity = 126/30.0 * len(self.history)
+        else:
+            intensity = 17 + 99 * max(0, gens-self.generation) / gens
+        color = self.params["color"].darker(85 + (127 - intensity) * 4)
+        outline = color.darker(500)
         pen = QPen(color)
         pen.setWidthF(pen_width)
+        darkPen = QPen(outline)
+        darkPen.setWidthF(pen_width)
+        depth = self.params["depth"]
         for index in range(len(points) - 1):
-            scene.addLine(QLineF(points[index], points[index+1]), pen)
+            ofs = QPoint(-1, -1)*pen_width / 4.5
+            scene.addLine(QLineF(points[index] - ofs, points[index+1] - ofs), darkPen).setZValue(depth-3)
+            scene.addLine(QLineF(points[index], points[index+1]), pen).setZValue(depth)
 
         if incremental:
             self.already_drawn = max(0, len(self.history) - 1)
@@ -152,38 +159,47 @@ class Branch:
 class GrassDrawer:
     def __init__(self, view):
         self.view = view
-        self.bounds = self.view.sceneRect()
+        self.bounds = self.view.scene().itemsBoundingRect()
 
     def draw_some_grass(self, bundles=100):
         for i in range(bundles):
-            width = self.bounds.bottomLeft().x() - self.bounds.bottomRight().x()
-            x = random.gauss((self.bounds.bottomLeft().x() + self.bounds.bottomRight().x()) / 2.0, width / 5.0)
-            max_z = 0.15 * (self.bounds.topLeft().y() - self.bounds.bottomLeft().y())
-            z = random.uniform(-max_z, max_z)
-            size = 0.15 + ((max_z - z) / max_z) ** 1.5
-            y = z * random.uniform(0, 1)
-            self.draw_grass_bundle(location=(x, y), size=size, items=random.randint(6, 14))
+            width = abs(self.bounds.bottomLeft().x() - self.bounds.bottomRight().x())
+            x = random.gauss((self.bounds.bottomLeft().x() + self.bounds.bottomRight().x()) / 2.0, width / 4.5)
+            x = max(x, self.bounds.bottomLeft().x() - 1.2*width)
+            x = min(x, self.bounds.bottomRight().x() + 1.2*width)
+            max_z = 0.35 * (self.bounds.topLeft().y() - self.bounds.bottomLeft().y())
+            z = - (random.uniform(0, 1) ** 1.5 - 0.5 + random.uniform(-0.35, 0.35)) * max_z
+            size = 0.25 + ((max_z - z) / max_z) ** 1.5 + random.uniform(-0.1, 0.1)
+            y = z
+            opacity = ((max_z - (z+0.5*max_z)) / max_z) ** 2
+            self.draw_grass_bundle(location=(x, y), size=size, items=random.randint(6, 14), opacity=opacity)
+            if i % 25 == 0:
+                QApplication.processEvents()
 
-    def draw_grass_bundle(self, location, size, items):
+    def draw_grass_bundle(self, location, size, items, opacity):
         baseSize = 8
         size = size * baseSize
         baseHeight = 0.4
-        pen = QPen(QColor(127, 127, 127, 60))
+        pen = QPen(QColor(180, 180, 180, opacity * 80 + 15))
         for i in range(items):
             segments = 5
+            exponent = 2.0
             base = QPoint(*location)
-            x_diff = size * baseSize * random.uniform(-0.2, 0.2)
+            x_diff = size * baseSize * random.uniform(-0.25, 0.25)
             y_diff = size * baseSize * random.uniform(0.8, 1.2) * baseHeight
             current_location = base
             for segment_index in range(segments):
-                segment_tip = QPoint(location[0] + x_diff / segments ** 2 * (segment_index + 1) ** 2,
+                segment_tip = QPoint(location[0] + x_diff / segments ** exponent * (segment_index + 1) ** exponent,
                                      location[1] - y_diff / segments * segment_index)
-                self.view.scene().addLine(QLineF(current_location, segment_tip), pen)
+                self.view.scene().addLine(QLineF(current_location, segment_tip), pen).setZValue(np.imag(location[0]))
                 current_location = segment_tip
 
 class Tree:
-    def __init__(self, params):
-        self.trunk = Branch(10, params["v_start"], params)
+    def __init__(self, params, base_location=10, scale=1.0):
+        params["scale"] = scale
+        params["color"].darker(1/scale * 50)
+        params["depth"] = np.imag(base_location)
+        self.trunk = Branch(base_location, params["v_start"] * scale, params)
         start = params["start_branches"]
         if start > 1:
             self.trunk.is_alive = False
@@ -236,23 +252,49 @@ class TreeDialog(QDialog):
         image = None
         painter_id = random.randint(0, 2**32)
         self.active_painer = painter_id
-        self.tree = Tree(self.get_params())
         index = 0
         every = self.ui.repaint.value()
 
-        self.scene.setBackgroundBrush(QColor(0, 0, 0))
         self.scene.clear()
-        for iteration in self.tree.grow_iterations(self.ui.generations.value(), yield_every=every):
-            self.tree.draw(self.scene, incremental=True)
-            self.ui.progress.setText("Working ... displayed frame: {0}".format(index))
-            self.ui.image.repaint()
-            QApplication.processEvents()
-            index += every
-            if self.active_painer != painter_id:
-                return
 
+        tree_count = self.ui.tree_count.value()
+        need_spacing = 65
+        used_locations = []
+        for tree_index in range(tree_count):
+            z_range = 80
+            base_z = random.uniform(-z_range, z_range)
+
+            def make_base():
+                return complex(10 + random.uniform(-350 + 150*tree_count, 350 + 150*tree_count), base_z)
+            def closest_distance_to_used(base):
+                return min([np.abs(np.real(base - item)) for item in used_locations])
+            base_location = make_base()
+            while not len(used_locations) == 0 and closest_distance_to_used(base_location) < need_spacing:
+                base_location = make_base()
+
+            used_locations.append(base_location)
+            scale = 1.0 + 0.75 * ((z_range - base_z) / (2*z_range)) ** 2
+            self.tree = Tree(self.get_params(), base_location=base_location, scale=scale)
+            for iteration in self.tree.grow_iterations(self.ui.generations.value(), yield_every=every):
+                self.tree.draw(self.scene, incremental=True)
+                self.ui.progress.setText("Working ... displayed frame: {0}".format(index))
+
+                gradient = QLinearGradient(self.scene.itemsBoundingRect().topLeft(),
+                                           self.scene.itemsBoundingRect().bottomLeft())
+                gradient.setColorAt(0.4, QColor(0, 0, 0))
+                gradient.setColorAt(0, QColor(25, 25, 25))
+                self.scene.setBackgroundBrush(QBrush(gradient))
+
+                self.ui.image.repaint()
+                QApplication.processEvents()
+                index += every
+                if self.active_painer != painter_id:
+                    return
+
+        self.ui.image.fitInView(self.scene.itemsBoundingRect(), 1)
         d = GrassDrawer(self.ui.image)
-        d.draw_some_grass()
+        d.draw_some_grass(150 + 75*tree_count)
+        #self.ui.image.fitInView(self.scene.itemsBoundingRect(), 1)
         self.ui.progress.setText("Done. Displayed frame: {0}".format(index))
 
 def aboutToQuit():
