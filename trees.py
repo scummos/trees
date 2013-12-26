@@ -7,7 +7,7 @@ from PyQt4.QtCore import QPoint, QObject, QPointF, QLineF, QEventLoop
 
 from PyQt4.QtGui import QImage, QPainter, QColor, QPolygon
 from PyQt4.QtGui import QLabel, QApplication, QPixmap, QMainWindow, QPushButton, QVBoxLayout, QWidget, QDialog
-from PyQt4.QtGui import QPen, QGraphicsScene, QPolygonF, QLinearGradient, QBrush
+from PyQt4.QtGui import QPen, QGraphicsScene, QPolygonF, QLinearGradient, QBrush, QPainterPath
 
 import numpy as np
 
@@ -110,6 +110,8 @@ class Branch:
     def do_branch(self, count=2):
         v1 = self.velocity - self.params["branch_split"]*(1 + self.params["branch_split_var"] * random.random()-0.5)
         v2 = self.velocity + self.params["branch_split"]*(1 + self.params["branch_split_var"] * random.random()-0.5)
+        v1 = v1 / np.abs(v1) * np.abs(self.velocity) * random.uniform(0.9, 1.1)
+        v2 = v2 / np.abs(v2) * np.abs(self.velocity) * random.uniform(0.9, 1.1)
         self.branches.append(Branch(self.position, v1, self.params, self.generation + 1))
         self.branches.append(Branch(self.position, v2, self.params, self.generation + 1))
 
@@ -133,10 +135,11 @@ class Branch:
         darkPen = QPen(outline)
         darkPen.setWidthF(pen_width)
         depth = self.params["depth"]
-        for index in range(len(points) - 1):
-            ofs = QPoint(-1, -1)*pen_width / 4.5
-            scene.addLine(QLineF(points[index] - ofs, points[index+1] - ofs), darkPen).setZValue(depth-3)
-            scene.addLine(QLineF(points[index], points[index+1]), pen).setZValue(depth)
+        path = QPainterPath()
+        path.moveTo(points[0])
+        for index in range(1, len(points) - 1):
+            path.lineTo(points[index])
+        scene.addPath(path, pen)
 
         if incremental:
             self.already_drawn = max(0, len(self.history) - 1)
